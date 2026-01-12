@@ -148,7 +148,7 @@ const Index = () => {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <label className="flex-1">
                   <Input
                     type="file"
@@ -163,7 +163,7 @@ const Index = () => {
                     </span>
                   </Button>
                 </label>
-                <Button onClick={saveMoment} className="flex-1 gap-2 text-lg py-6">
+                <Button onClick={saveMoment} className="flex-1 gap-2">
                   <Icon name="Heart" size={20} />
                   Сохранить момент
                 </Button>
