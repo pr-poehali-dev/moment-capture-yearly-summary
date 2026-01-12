@@ -48,7 +48,12 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('moments', JSON.stringify(moments));
+    try {
+      localStorage.setItem('moments', JSON.stringify(moments));
+    } catch (error) {
+      toast.error('Не удалось сохранить данные. Попробуйте удалить старые фото');
+      console.error('LocalStorage error:', error);
+    }
   }, [moments]);
 
   useEffect(() => {
@@ -104,9 +109,39 @@ const Index = () => {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Файл слишком большой. Максимум 5 МБ');
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setCurrentPhoto(reader.result as string);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          const maxSize = 1200;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            } else {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          const compressedImage = canvas.toDataURL('image/jpeg', 0.8);
+          setCurrentPhoto(compressedImage);
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
