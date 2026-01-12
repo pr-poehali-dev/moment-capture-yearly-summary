@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 
@@ -20,13 +21,32 @@ const Index = () => {
   const [currentText, setCurrentText] = useState('');
   const [currentPhoto, setCurrentPhoto] = useState<string | undefined>();
   const [view, setView] = useState<'add' | 'timeline' | 'year'>('add');
+  const [selectedWeek, setSelectedWeek] = useState<number>(getCurrentWeek());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  const getCurrentWeek = () => {
+  function getCurrentWeek(): number {
     const now = new Date();
     const start = new Date(now.getFullYear(), 0, 1);
     const diff = now.getTime() - start.getTime();
     const oneWeek = 1000 * 60 * 60 * 24 * 7;
     return Math.ceil(diff / oneWeek);
+  }
+
+  const getWeekOptions = () => {
+    const weeks = [];
+    for (let i = 1; i <= 52; i++) {
+      weeks.push(i);
+    }
+    return weeks;
+  };
+
+  const getYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear; i >= currentYear - 5; i--) {
+      years.push(i);
+    }
+    return years;
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,14 +70,19 @@ const Index = () => {
       id: Date.now().toString(),
       text: currentText,
       date: new Date(),
-      weekNumber: getCurrentWeek(),
-      year: new Date().getFullYear(),
+      weekNumber: selectedWeek,
+      year: selectedYear,
       photo: currentPhoto
     };
 
-    setMoments([newMoment, ...moments]);
+    setMoments([newMoment, ...moments].sort((a, b) => {
+      if (b.year !== a.year) return b.year - a.year;
+      return b.weekNumber - a.weekNumber;
+    }));
     setCurrentText('');
     setCurrentPhoto(undefined);
+    setSelectedWeek(getCurrentWeek());
+    setSelectedYear(new Date().getFullYear());
     toast.success('Момент сохранён! ✨');
   };
 
@@ -111,16 +136,42 @@ const Index = () => {
           <Card className="animate-scale-in shadow-xl border-2 border-accent/50">
             <CardContent className="p-8">
               <div className="mb-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Icon name="Calendar" size={20} className="text-primary" />
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Неделя {getCurrentWeek()} • {currentYear}
-                  </span>
-                </div>
-                <h2 className="text-2xl font-semibold mb-2">Что особенного произошло на этой неделе?</h2>
-                <p className="text-muted-foreground">
+                <h2 className="text-2xl font-semibold mb-4">Что особенного произошло?</h2>
+                <p className="text-muted-foreground mb-4">
                   Запишите один самый яркий момент, который хочется запомнить
                 </p>
+                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium mb-2 block">Неделя</label>
+                    <Select value={selectedWeek.toString()} onValueChange={(val) => setSelectedWeek(parseInt(val))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getWeekOptions().map((week) => (
+                          <SelectItem key={week} value={week.toString()}>
+                            Неделя {week}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm font-medium mb-2 block">Год</label>
+                    <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getYearOptions().map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
 
               <Textarea
