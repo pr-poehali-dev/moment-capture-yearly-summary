@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 interface Moment {
   id: string;
   text: string;
+  title?: string;
   date: Date;
   weekNumber: number;
   year: number;
@@ -19,6 +20,7 @@ interface Moment {
 const Index = () => {
   const [moments, setMoments] = useState<Moment[]>([]);
   const [currentText, setCurrentText] = useState('');
+  const [currentTitle, setCurrentTitle] = useState('');
   const [currentPhoto, setCurrentPhoto] = useState<string | undefined>();
   const [view, setView] = useState<'add' | 'timeline' | 'year'>('add');
   const [selectedWeek, setSelectedWeek] = useState<number>(getCurrentWeek());
@@ -33,10 +35,20 @@ const Index = () => {
   }
 
   const getWeekOptions = () => {
+    const currentWeek = getCurrentWeek();
+    const currentYearNow = new Date().getFullYear();
     const weeks = [];
-    for (let i = 1; i <= 52; i++) {
-      weeks.push(i);
+    
+    if (selectedYear < currentYearNow) {
+      for (let i = 1; i <= 52; i++) {
+        weeks.push(i);
+      }
+    } else if (selectedYear === currentYearNow) {
+      for (let i = 1; i <= currentWeek; i++) {
+        weeks.push(i);
+      }
     }
+    
     return weeks;
   };
 
@@ -69,6 +81,7 @@ const Index = () => {
     const newMoment: Moment = {
       id: Date.now().toString(),
       text: currentText,
+      title: currentTitle.trim() || undefined,
       date: new Date(),
       weekNumber: selectedWeek,
       year: selectedYear,
@@ -80,6 +93,7 @@ const Index = () => {
       return b.weekNumber - a.weekNumber;
     }));
     setCurrentText('');
+    setCurrentTitle('');
     setCurrentPhoto(undefined);
     setSelectedWeek(getCurrentWeek());
     setSelectedYear(new Date().getFullYear());
@@ -158,6 +172,15 @@ const Index = () => {
                 <p className="text-muted-foreground mb-4">
                   Запишите один самый яркий момент, который хочется запомнить
                 </p>
+                <div className="mb-4">
+                  <label className="text-sm font-medium mb-2 block">Заголовок (опционально)</label>
+                  <Input
+                    value={currentTitle}
+                    onChange={(e) => setCurrentTitle(e.target.value)}
+                    placeholder="Например: Поездка в горы"
+                    className="text-lg"
+                  />
+                </div>
                 <div className="flex flex-col sm:flex-row gap-3 mb-4">
                   <div className="flex-1">
                     <label className="text-sm font-medium mb-2 block">Неделя</label>
@@ -316,7 +339,7 @@ const Index = () => {
                           <span className="font-bold text-primary">{moment.weekNumber}</span>
                         </div>
                         <div>
-                          <div className="font-semibold">Неделя {moment.weekNumber}</div>
+                          <div className="font-semibold">{moment.title || `Неделя ${moment.weekNumber}`}</div>
                           <div className="text-sm text-muted-foreground">{getWeekDateRange(moment.weekNumber, moment.year)}</div>
                         </div>
                       </div>
