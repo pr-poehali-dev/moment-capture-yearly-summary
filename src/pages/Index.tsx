@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,9 +22,49 @@ const Index = () => {
   const [currentText, setCurrentText] = useState('');
   const [currentTitle, setCurrentTitle] = useState('');
   const [currentPhoto, setCurrentPhoto] = useState<string | undefined>();
-  const [view, setView] = useState<'add' | 'timeline' | 'year'>('add');
+  const [view, setView] = useState<'add' | 'timeline' | 'year' | 'settings'>('add');
   const [selectedWeek, setSelectedWeek] = useState<number>(getCurrentWeek());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [accentColor, setAccentColor] = useState('#8B5CF6');
+  const [bgColor, setBgColor] = useState('#FFFFFF');
+
+  useEffect(() => {
+    const savedMoments = localStorage.getItem('moments');
+    if (savedMoments) {
+      const parsed = JSON.parse(savedMoments);
+      setMoments(parsed.map((m: any) => ({ ...m, date: new Date(m.date) })));
+    }
+
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (savedTheme) setTheme(savedTheme);
+
+    const savedAccent = localStorage.getItem('accentColor');
+    if (savedAccent) setAccentColor(savedAccent);
+
+    const savedBg = localStorage.getItem('bgColor');
+    if (savedBg) setBgColor(savedBg);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('moments', JSON.stringify(moments));
+  }, [moments]);
+
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('accentColor', accentColor);
+    document.documentElement.style.setProperty('--accent-color', accentColor);
+  }, [accentColor]);
+
+  useEffect(() => {
+    localStorage.setItem('bgColor', bgColor);
+    document.documentElement.style.setProperty('--bg-color', bgColor);
+  }, [bgColor]);
 
   function getCurrentWeek(): number {
     const now = new Date();
@@ -78,26 +118,62 @@ const Index = () => {
       return;
     }
 
-    const newMoment: Moment = {
-      id: Date.now().toString(),
-      text: currentText,
-      title: currentTitle.trim() || undefined,
-      date: new Date(),
-      weekNumber: selectedWeek,
-      year: selectedYear,
-      photo: currentPhoto
-    };
+    if (editingId) {
+      setMoments(moments.map(m => 
+        m.id === editingId 
+          ? { ...m, text: currentText, title: currentTitle.trim() || undefined, photo: currentPhoto, weekNumber: selectedWeek, year: selectedYear }
+          : m
+      ));
+      setEditingId(null);
+      toast.success('Момент обновлён! ✨');
+    } else {
+      const newMoment: Moment = {
+        id: Date.now().toString(),
+        text: currentText,
+        title: currentTitle.trim() || undefined,
+        date: new Date(),
+        weekNumber: selectedWeek,
+        year: selectedYear,
+        photo: currentPhoto
+      };
 
-    setMoments([newMoment, ...moments].sort((a, b) => {
-      if (b.year !== a.year) return b.year - a.year;
-      return b.weekNumber - a.weekNumber;
-    }));
+      setMoments([newMoment, ...moments].sort((a, b) => {
+        if (b.year !== a.year) return b.year - a.year;
+        return b.weekNumber - a.weekNumber;
+      }));
+      toast.success('Момент сохранён! ✨');
+    }
+
     setCurrentText('');
     setCurrentTitle('');
     setCurrentPhoto(undefined);
     setSelectedWeek(getCurrentWeek());
     setSelectedYear(new Date().getFullYear());
-    toast.success('Момент сохранён! ✨');
+    setView('timeline');
+  };
+
+  const startEdit = (moment: Moment) => {
+    setEditingId(moment.id);
+    setCurrentText(moment.text);
+    setCurrentTitle(moment.title || '');
+    setCurrentPhoto(moment.photo);
+    setSelectedWeek(moment.weekNumber);
+    setSelectedYear(moment.year);
+    setView('add');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setCurrentText('');
+    setCurrentTitle('');
+    setCurrentPhoto(undefined);
+    setSelectedWeek(getCurrentWeek());
+    setSelectedYear(new Date().getFullYear());
+  };
+
+  const deleteMoment = (id: string) => {
+    setMoments(moments.filter(m => m.id !== id));
+    toast.success('Момент удалён');
   };
 
   const formatDate = (date: Date) => {
@@ -162,15 +238,23 @@ const Index = () => {
             <Icon name="Sparkles" size={18} />
             Итоги года
           </Button>
+          <Button
+            onClick={() => setView('settings')}
+            variant={view === 'settings' ? 'default' : 'outline'}
+            className="gap-2"
+          >
+            <Icon name="Settings" size={18} />
+            Настройки
+          </Button>
         </div>
 
         {view === 'add' && (
           <Card className="animate-scale-in shadow-xl border-2 border-accent/50">
             <CardContent className="p-8">
               <div className="mb-6">
-                <h2 className="text-2xl font-semibold mb-4">Что особенного произошло?</h2>
+                <h2 className="text-2xl font-semibold mb-4">{editingId ? 'Редактировать момент' : 'Что особенного произошло?'}</h2>
                 <p className="text-muted-foreground mb-4">
-                  Запишите один самый яркий момент, который хочется запомнить
+                  {editingId ? 'Внесите изменения в ваш момент' : 'Запишите один самый яркий момент, который хочется запомнить'}
                 </p>
                 <div className="mb-4">
                   <label className="text-sm font-medium mb-2 block">Заголовок (опционально)</label>
@@ -218,7 +302,7 @@ const Index = () => {
               <Textarea
                 value={currentText}
                 onChange={(e) => setCurrentText(e.target.value)}
-                placeholder="Сегодня я..."
+                placeholder="На этой неделе..."
                 className="min-h-[200px] mb-6 text-lg resize-none"
               />
 
@@ -255,9 +339,15 @@ const Index = () => {
                     </span>
                   </Button>
                 </label>
+                {editingId && (
+                  <Button onClick={cancelEdit} variant="outline" className="flex-1 gap-2">
+                    <Icon name="X" size={18} />
+                    Отмена
+                  </Button>
+                )}
                 <Button onClick={saveMoment} className="flex-1 gap-2">
                   <Icon name="Heart" size={20} />
-                  Сохранить момент
+                  {editingId ? 'Обновить' : 'Сохранить момент'}
                 </Button>
               </div>
             </CardContent>
@@ -284,11 +374,21 @@ const Index = () => {
                         <span className="text-2xl font-bold text-primary">{moment.weekNumber}</span>
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Icon name="Calendar" size={16} className="text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">
-                            Неделя {moment.weekNumber} • {getWeekDateRange(moment.weekNumber, moment.year)}
-                          </span>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Icon name="Calendar" size={16} className="text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">
+                              Неделя {moment.weekNumber} • {getWeekDateRange(moment.weekNumber, moment.year)}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button onClick={() => startEdit(moment)} size="sm" variant="ghost">
+                              <Icon name="Edit" size={16} />
+                            </Button>
+                            <Button onClick={() => deleteMoment(moment.id)} size="sm" variant="ghost">
+                              <Icon name="Trash2" size={16} />
+                            </Button>
+                          </div>
                         </div>
                         {moment.photo && (
                           <img
@@ -355,6 +455,86 @@ const Index = () => {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {view === 'settings' && (
+          <Card className="animate-scale-in shadow-xl">
+            <CardContent className="p-8">
+              <h2 className="text-2xl font-semibold mb-6">Настройки оформления</h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="text-sm font-medium mb-3 block">Тема</label>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => setTheme('light')}
+                      variant={theme === 'light' ? 'default' : 'outline'}
+                      className="flex-1 gap-2"
+                    >
+                      <Icon name="Sun" size={18} />
+                      Светлая
+                    </Button>
+                    <Button
+                      onClick={() => setTheme('dark')}
+                      variant={theme === 'dark' ? 'default' : 'outline'}
+                      className="flex-1 gap-2"
+                    >
+                      <Icon name="Moon" size={18} />
+                      Тёмная
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-3 block">Акцентный цвет</label>
+                  <div className="flex gap-3 flex-wrap">
+                    {['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'].map(color => (
+                      <button
+                        key={color}
+                        onClick={() => setAccentColor(color)}
+                        className="w-12 h-12 rounded-full border-2 transition-all"
+                        style={{ 
+                          backgroundColor: color,
+                          borderColor: accentColor === color ? color : 'transparent',
+                          transform: accentColor === color ? 'scale(1.1)' : 'scale(1)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <Input
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="mt-3 h-12 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-3 block">Цвет фона</label>
+                  <div className="flex gap-3 flex-wrap">
+                    {['#FFFFFF', '#F3F4F6', '#FEF3C7', '#DBEAFE', '#FCE7F3'].map(color => (
+                      <button
+                        key={color}
+                        onClick={() => setBgColor(color)}
+                        className="w-12 h-12 rounded-full border-2 transition-all"
+                        style={{ 
+                          backgroundColor: color,
+                          borderColor: bgColor === color ? accentColor : '#E5E7EB',
+                          transform: bgColor === color ? 'scale(1.1)' : 'scale(1)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <Input
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => setBgColor(e.target.value)}
+                    className="mt-3 h-12 cursor-pointer"
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

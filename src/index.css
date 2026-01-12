@@ -110,4 +110,18 @@
   h6 {
     font-family: "Merriweather", serif;
   }
+
+  :root {
+    --accent-color: #8b5cf6;
+    --bg-color: #ffffff;
+  }
+
+  :root[style*="--accent-color"] {
+    --primary: var(--accent-color);
+    --ring: var(--accent-color);
+  }
+
+  body[style*="--bg-color"] {
+    background-color: var(--bg-color);
+  }
 }
