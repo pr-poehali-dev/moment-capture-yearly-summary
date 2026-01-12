@@ -94,8 +94,26 @@ const Index = () => {
     }).format(date);
   };
 
+  const getWeekDateRange = (weekNumber: number, year: number) => {
+    const firstDayOfYear = new Date(year, 0, 1);
+    const daysOffset = (weekNumber - 1) * 7;
+    const weekStart = new Date(firstDayOfYear.getTime() + daysOffset * 24 * 60 * 60 * 1000);
+    const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+    
+    const formatShort = (date: Date) => {
+      return new Intl.DateTimeFormat('ru-RU', {
+        day: 'numeric',
+        month: 'short'
+      }).format(date);
+    };
+    
+    return `${formatShort(weekStart)} — ${formatShort(weekEnd)}`;
+  };
+
   const currentYear = new Date().getFullYear();
-  const yearMoments = moments.filter(m => m.year === currentYear);
+  const yearMoments = moments
+    .filter(m => m.year === currentYear)
+    .sort((a, b) => a.weekNumber - b.weekNumber);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-accent/20">
@@ -245,7 +263,9 @@ const Index = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <Icon name="Calendar" size={16} className="text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{formatDate(moment.date)}</span>
+                          <span className="text-sm text-muted-foreground">
+                            Неделя {moment.weekNumber} • {getWeekDateRange(moment.weekNumber, moment.year)}
+                          </span>
                         </div>
                         {moment.photo && (
                           <img
@@ -297,7 +317,7 @@ const Index = () => {
                         </div>
                         <div>
                           <div className="font-semibold">Неделя {moment.weekNumber}</div>
-                          <div className="text-sm text-muted-foreground">{formatDate(moment.date)}</div>
+                          <div className="text-sm text-muted-foreground">{getWeekDateRange(moment.weekNumber, moment.year)}</div>
                         </div>
                       </div>
                       {moment.photo && (
